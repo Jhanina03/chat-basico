@@ -1,0 +1,159 @@
+:root {
+  --bg: #e5ddd5;
+  --panel: #ffffff;
+  --header: #075e54;
+  --header-text: #ffffff;
+  --mine: #dcf8c6;
+  --theirs: #ffffff;
+  --text: #1f2933;
+  --muted: #52606d;
+  --accent: #075e54;
+  --accent-text: #ffffff;
+  --border: #c7cdd3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  max-width: 720px;
+  height: 100dvh;
+  margin: 0 auto;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+}
+
+.join {
+  margin: auto;
+  padding: 24px 16px;
+  text-align: center;
+  width: 100%;
+  max-width: 360px;
+}
+
+.join-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+input {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: 100%;
+}
+
+button {
+  font: inherit;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 20px;
+  background: var(--accent);
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.chat[hidden] {
+  display: none;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--header);
+  color: var(--header-text);
+}
+
+.chat-header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.status {
+  font-size: 0.85rem;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 16px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.message {
+  max-width: 75%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--theirs);
+  align-self: flex-start;
+  overflow-wrap: anywhere;
+}
+
+.message.mine {
+  background: var(--mine);
+  align-self: flex-end;
+}
+
+.message-author {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.message-time {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.notice {
+  align-self: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--panel);
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.message-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

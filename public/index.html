@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat Básico</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section id="join-screen" class="join">
+      <h1>Chat Básico</h1>
+      <p>Escribe tu nombre para entrar al chat.</p>
+      <form id="join-form" class="join-form">
+        <label for="name-input">Tu nombre</label>
+        <input id="name-input" type="text" maxlength="30" autocomplete="off" required>
+        <button type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="chat-screen" class="chat" hidden>
+      <header class="chat-header">
+        <h1>Chat Básico</h1>
+        <span id="status" class="status">Conectando…</span>
+      </header>
+
+      <ul id="messages" class="messages" aria-live="polite"></ul>
+
+      <form id="message-form" class="message-form">
+        <label for="message-input" class="visually-hidden">Mensaje</label>
+        <input id="message-input" type="text" maxlength="500" placeholder="Escribe un mensaje" autocomplete="off">
+        <button type="submit">Enviar</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
