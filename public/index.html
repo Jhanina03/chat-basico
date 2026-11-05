@@ -24,7 +24,14 @@
         <span id="status" class="status">Conectando…</span>
       </header>
 
-      <ul id="messages" class="messages" aria-live="polite"></ul>
+      <div class="chat-body">
+        <aside class="users" aria-labelledby="users-title">
+          <h2 id="users-title">Conectados</h2>
+          <ul id="user-list" class="user-list"></ul>
+        </aside>
+
+        <ul id="messages" class="messages" aria-live="polite"></ul>
+      </div>
 
       <form id="message-form" class="message-form">
         <label for="message-input" class="visually-hidden">Mensaje</label>
@@ -34,7 +41,24 @@
     </section>
   </main>
 
+  <div id="incoming-call" class="incoming-call" role="alertdialog" aria-labelledby="incoming-text" hidden>
+    <p id="incoming-text"></p>
+    <div class="incoming-actions">
+      <button id="accept-call" type="button" class="accept">Contestar</button>
+      <button id="reject-call" type="button" class="reject">Rechazar</button>
+    </div>
+  </div>
+
+  <section id="call-panel" class="call-panel" aria-labelledby="call-status" hidden>
+    <video id="remote-video" class="remote-video" autoplay playsinline></video>
+    <video id="local-video" class="local-video" autoplay playsinline muted></video>
+    <div class="call-bar">
+      <p id="call-status" class="call-status"></p>
+      <button id="hang-up" type="button" class="reject">Colgar</button>
+    </div>
+  </section>
+
   <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="app.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

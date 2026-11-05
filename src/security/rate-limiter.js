@@ -4,13 +4,13 @@
 export class RateLimiter {
   #limit;
   #intervalMs;
-  #now;
+  #clock;
   #timestamps = [];
 
   /**
-   * @param {{ limit: number, intervalMs: number, now?: () => number }} options
+   * @param {{ limit: number, intervalMs: number, clock: { now: () => Date } }} options
    */
-  constructor({ limit, intervalMs, now = Date.now }) {
+  constructor({ limit, intervalMs, clock }) {
     if (!Number.isInteger(limit) || limit < 1) {
       throw new RangeError('El límite debe ser un entero positivo');
     }
@@ -19,15 +19,15 @@ export class RateLimiter {
     }
     this.#limit = limit;
     this.#intervalMs = intervalMs;
-    this.#now = now;
+    this.#clock = clock;
   }
 
   /**
    * Registra una acción si todavía hay cupo.
-   * @returns {boolean} true si la acción está permitida.
+   * @returns {boolean} true si la acción está permitida
    */
   tryConsume() {
-    const current = this.#now();
+    const current = this.#clock.now().getTime();
     const windowStart = current - this.#intervalMs;
     this.#timestamps = this.#timestamps.filter((timestamp) => timestamp > windowStart);
     if (this.#timestamps.length >= this.#limit) {

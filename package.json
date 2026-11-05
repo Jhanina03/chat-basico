@@ -1,17 +1,21 @@
 {
   "name": "chat-basico",
   "version": "1.0.0",
-  "description": "Chat básico en tiempo real con Express y Socket.IO",
+  "description": "Chat básico en tiempo real con videollamada (Express, Socket.IO y WebRTC)",
   "type": "module",
   "main": "server.js",
   "private": true,
   "engines": {
     "node": ">=20"
   },
+  "overrides": {
+    "minimatch": "^11.0.1"
+  },
   "scripts": {
     "start": "node server.js",
-    "test": "node --test",
-    "coverage": "node --test --experimental-test-coverage"
+    "test": "node --test --test-timeout=20000",
+    "coverage": "node --test --test-timeout=20000 --experimental-test-coverage",
+    "lint": "eslint ."
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -19,6 +23,10 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "globals": "^16.5.0",
     "jsdom": "^26.1.0",
     "socket.io-client": "^4.8.1"
   }

@@ -10,6 +10,9 @@
   --accent: #075e54;
   --accent-text: #ffffff;
   --border: #c7cdd3;
+  --accept: #1e7e34;
+  --reject: #b02a37;
+  --call-bg: #111b21;
 }
 
 * {
@@ -71,8 +74,144 @@ button {
   height: 100%;
 }
 
-.chat[hidden] {
+.chat[hidden],
+.call-panel[hidden],
+.incoming-call[hidden] {
   display: none;
+}
+
+.chat-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.users {
+  width: 200px;
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.users h2 {
+  font-size: 0.9rem;
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.user-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.user-empty {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.call-button {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.call-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.accept {
+  background: var(--accept);
+}
+
+.reject {
+  background: var(--reject);
+}
+
+.incoming-call {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 360px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 30%);
+  text-align: center;
+  z-index: 20;
+}
+
+.incoming-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.call-panel {
+  position: fixed;
+  inset: 0;
+  background: var(--call-bg);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.remote-video {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  object-fit: contain;
+  background: var(--call-bg);
+}
+
+.local-video {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 28%;
+  max-width: 180px;
+  border-radius: 8px;
+  border: 2px solid var(--header-text);
+  background: var(--header);
+}
+
+.call-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--header-text);
+}
+
+.call-status {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .chat-body {
+    flex-direction: column;
+  }
+
+  .users {
+    width: 100%;
+    max-height: 30%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
 }
 
 .chat-header {
