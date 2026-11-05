@@ -18,6 +18,36 @@ Abre http://localhost:3000 en dos pestañas (o desde otro dispositivo en la mism
 npm test
 ```
 
+Con reporte de cobertura:
+
+```bash
+npm run coverage
+```
+
+## Estructura
+
+| Archivo | Responsabilidad |
+|---|---|
+| `server.js` | Punto de entrada: lee el puerto y apaga el servidor de forma ordenada. |
+| `src/start.js` | Arranca el servidor y maneja errores de arranque. |
+| `src/app.js` | Une las piezas (web, Socket.IO, eventos). |
+| `src/http-app.js` | Aplicación web: archivos, cabeceras de seguridad, `/health`, `/api/config`. |
+| `src/chat-handlers.js` | Eventos del chat: entrar, enviar mensaje, salir. |
+| `src/messages.js` | Limpieza y validación de textos, creación de mensajes e historial. |
+| `src/rate-limiter.js` | Anti-spam: máximo de mensajes por intervalo. |
+| `src/origin.js` | Rechaza conexiones desde otros sitios web. |
+| `src/config.js` | Límites del chat en un solo lugar. |
+| `public/chat-ui.js` | Interfaz del chat en el navegador. |
+
+## Seguridad
+
+- Mensajes mostrados con `textContent` (sin `innerHTML`): protección contra XSS.
+- Validación en el servidor: tipo, longitud, caracteres de control y de dirección del texto.
+- Límite de 5 mensajes cada 5 segundos por usuario.
+- Solo se aceptan conexiones desde la misma página (cabecera `Origin`).
+- Paquetes de máximo 16 KB.
+- Cabeceras de seguridad con `helmet` y sin `x-powered-by`.
+
 ## Publicar en Render (gratis)
 
 1. Sube este proyecto a un repositorio público de GitHub.

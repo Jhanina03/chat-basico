@@ -1,24 +1,23 @@
 import { randomUUID } from 'node:crypto';
+import { DEFAULT_NAME, HISTORY_LIMIT, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from './config.js';
 
-export const MAX_NAME_LENGTH = 30;
-export const MAX_TEXT_LENGTH = 500;
-export const HISTORY_LIMIT = 50;
-
-const FIRST_PRINTABLE_CODE = 32;
-const DELETE_CODE = 127;
+/** Caracteres de control y de dirección del texto (usados para disfrazar nombres). */
+const UNSAFE_CHARS = /[\p{Cc}\p{Bidi_Control}]/gu;
+const graphemeSegmenter = new Intl.Segmenter('es', { granularity: 'grapheme' });
 
 /**
- * Indica si un carácter es de control (no imprimible).
- * @param {string} char
- * @returns {boolean}
+ * Recorta un texto por caracteres visibles, sin partir emojis.
+ * @param {string} text
+ * @param {number} maxLength
+ * @returns {string}
  */
-function isControlChar(char) {
-  const code = char.codePointAt(0);
-  return code < FIRST_PRINTABLE_CODE || code === DELETE_CODE;
+function truncateGraphemes(text, maxLength) {
+  const graphemes = Array.from(graphemeSegmenter.segment(text), ({ segment }) => segment);
+  return graphemes.slice(0, maxLength).join('');
 }
 
 /**
- * Limpia un texto: quita caracteres de control, espacios extremos y lo recorta.
+ * Limpia un texto: quita caracteres peligrosos, espacios extremos y lo recorta.
  * @param {unknown} value
  * @param {number} maxLength
  * @returns {string}
@@ -27,26 +26,22 @@ export function cleanText(value, maxLength) {
   if (typeof value !== 'string') {
     return '';
   }
-  return Array.from(value)
-    .filter((char) => !isControlChar(char))
-    .join('')
-    .trim()
-    .slice(0, maxLength);
+  const withoutUnsafe = value.replaceAll(UNSAFE_CHARS, '').trim();
+  return truncateGraphemes(withoutUnsafe, maxLength).trim();
 }
 
 /**
- * Devuelve un nombre válido o "Anónimo" si viene vacío.
+ * Devuelve un nombre válido o el nombre por defecto si viene vacío.
  * @param {unknown} name
  * @returns {string}
  */
 export function cleanName(name) {
-  return cleanText(name, MAX_NAME_LENGTH) || 'Anónimo';
+  return cleanText(name, MAX_NAME_LENGTH) || DEFAULT_NAME;
 }
 
 /**
- * Crea un mensaje listo para enviarse a los clientes.
- * Devuelve null si el texto no es válido.
- * @param {unknown} author
+ * Crea un mensaje listo para enviarse. Devuelve null si el texto no es válido.
+ * @param {string} author
  * @param {unknown} text
  * @param {Date} [now]
  * @returns {{ id: string, author: string, text: string, sentAt: string } | null}
@@ -64,19 +59,21 @@ export function createMessage(author, text, now = new Date()) {
   };
 }
 
-/**
- * Historial en memoria con un tamaño máximo.
- */
+/** Historial en memoria con un tamaño máximo. */
 export class MessageHistory {
   #items = [];
+  #limit;
 
   constructor(limit = HISTORY_LIMIT) {
-    this.limit = limit;
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new RangeError('El límite del historial debe ser un entero positivo');
+    }
+    this.#limit = limit;
   }
 
   add(message) {
     this.#items.push(message);
-    if (this.#items.length > this.limit) {
+    if (this.#items.length > this.#limit) {
       this.#items.shift();
     }
   }
