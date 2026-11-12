@@ -31,7 +31,7 @@
     "@stryker-mutator/core": "^10.1.1",
     "eslint": "^9.39.5",
     "eslint-plugin-sonarjs": "^4.2.2",
-    "globals": "^16.5.0",
+    "globals": "^17.14.0",
     "jsdom": "^26.1.0",
     "socket.io-client": "^4.8.1"
   }
