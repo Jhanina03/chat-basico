@@ -1,3 +1,5 @@
+import { requirePositiveInteger } from '../domain/guards.js';
+
 /**
  * Limita cuántas acciones se permiten dentro de una ventana de tiempo.
  */
@@ -11,14 +13,8 @@ export class RateLimiter {
    * @param {{ limit: number, intervalMs: number, clock: { now: () => Date } }} options
    */
   constructor({ limit, intervalMs, clock }) {
-    if (!Number.isInteger(limit) || limit < 1) {
-      throw new RangeError('El límite debe ser un entero positivo');
-    }
-    if (!Number.isInteger(intervalMs) || intervalMs < 1) {
-      throw new RangeError('El intervalo debe ser un entero positivo');
-    }
-    this.#limit = limit;
-    this.#intervalMs = intervalMs;
+    this.#limit = requirePositiveInteger(limit, 'El límite');
+    this.#intervalMs = requirePositiveInteger(intervalMs, 'El intervalo');
     this.#clock = clock;
   }
 

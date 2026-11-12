@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, pruebas y dependencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias exactas
+        run: npm ci
+      - name: Análisis estático (ESLint + reglas SonarJS)
+        run: npm run lint
+      - name: Pruebas con cobertura
+        run: npm run coverage
+      - name: Vulnerabilidades en dependencias de producción
+        run: npm run audit:prod
+
+  mutation:
+    name: Pruebas de mutación
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Stryker (falla si el puntaje baja de 75%)
+        run: npm run mutation
+      - name: Guardar reporte de mutación
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-mutacion
+          path: reports/mutation/
+          retention-days: 14

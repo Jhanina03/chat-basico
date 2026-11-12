@@ -4,7 +4,7 @@ import { CallView } from '../../public/js/call-view.js';
 import { ChatView } from '../../public/js/chat-view.js';
 import { JoinView } from '../../public/js/join-view.js';
 import { MessageComposer } from '../../public/js/message-composer.js';
-import { UserListView } from '../../public/js/user-list-view.js';
+import { ContactListView } from '../../public/js/contact-list-view.js';
 import { createTestPage } from '../support/test-page.js';
 
 describe('DomFactory', () => {
@@ -38,10 +38,22 @@ describe('JoinView', () => {
   it('entrega el nombre recortado y no acepta nombres vacíos', () => {
     const input = page.document.getElementById('name-input');
     input.value = '   ';
-    page.submit('join-form');
+    page.submit('join-box');
     input.value = '  Jhanina  ';
-    page.submit('join-form');
+    page.submit('join-box');
     assert.deepEqual(names, ['Jhanina']);
+  });
+
+  it('también entra con la tecla Enter y no reacciona a otras teclas', () => {
+    page.document.getElementById('name-input').value = 'Luis';
+    assert.equal(page.pressKey('name-input', 'a'), true);
+    assert.deepEqual(names, []);
+    assert.equal(page.pressKey('name-input', 'Enter'), false);
+    assert.deepEqual(names, ['Luis']);
+  });
+
+  it('la página no usa formularios que se envíen al servidor', () => {
+    assert.equal(page.document.querySelectorAll('form').length, 0);
   });
 
   it('aplica el límite de caracteres solo si es un entero', () => {
@@ -67,9 +79,9 @@ describe('MessageComposer', () => {
     const input = page.document.getElementById('message-input');
 
     input.value = '   ';
-    page.submit('message-form');
+    page.submit('composer');
     input.value = '  Hola  ';
-    page.submit('message-form');
+    page.submit('composer');
 
     assert.deepEqual(sent, ['Hola']);
     assert.equal(input.value, '');
@@ -126,7 +138,7 @@ describe('ChatView', () => {
   });
 });
 
-describe('UserListView', () => {
+describe('ContactListView', () => {
   let page;
   let view;
   let calls;
@@ -137,7 +149,7 @@ describe('UserListView', () => {
 
   beforeEach(() => {
     page = createTestPage();
-    view = new UserListView(page.dom);
+    view = new ContactListView(page.dom);
     calls = [];
     view.onCall((user) => calls.push(user.id));
   });

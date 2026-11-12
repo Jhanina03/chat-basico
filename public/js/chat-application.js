@@ -1,97 +1,107 @@
-import { CHAT_EVENTS } from '../../shared/protocol.js';
-
-export const RATE_LIMIT_NOTICE = 'Estás enviando mensajes muy rápido. Espera un momento.';
+import { ACK_STATUS, CHAT_EVENTS, REJECTION_REASONS } from '../../shared/protocol.js';
 
 /**
  * Conecta las vistas del chat con el servidor.
  */
 export class ChatApplication {
   #connect;
-  #joinView;
-  #composer;
-  #chatView;
-  #userListView;
+  #views;
+  #texts;
   #createCallCoordinator;
+  #createMessageSender;
 
   #socket = null;
   #selfId = null;
   #callCoordinator = null;
+  #messageSender = null;
 
   /**
    * @param {{
    *   connect: () => import('socket.io-client').Socket,
-   *   joinView: import('./join-view.js').JoinView,
-   *   composer: import('./message-composer.js').MessageComposer,
-   *   chatView: import('./chat-view.js').ChatView,
-   *   userListView: import('./user-list-view.js').UserListView,
+   *   views: {
+   *     join: import('./join-view.js').JoinView,
+   *     composer: import('./message-composer.js').MessageComposer,
+   *     chat: import('./chat-view.js').ChatView,
+   *     users: import('./contact-list-view.js').ContactListView,
+   *   },
+   *   texts: import('./chat-texts.js').ChatTexts,
    *   createCallCoordinator: (socket: object, callbacks: object) => import('./call-coordinator.js').CallCoordinator,
+   *   createMessageSender: (socket: object, onProblem: (reason: string) => void) => import('./message-sender.js').MessageSender,
    * }} dependencies
    */
-  constructor({ connect, joinView, composer, chatView, userListView, createCallCoordinator }) {
+  constructor({ connect, views, texts, createCallCoordinator, createMessageSender }) {
     this.#connect = connect;
-    this.#joinView = joinView;
-    this.#composer = composer;
-    this.#chatView = chatView;
-    this.#userListView = userListView;
+    this.#views = views;
+    this.#texts = texts;
     this.#createCallCoordinator = createCallCoordinator;
+    this.#createMessageSender = createMessageSender;
   }
 
   /**
    * @param {{ nameLength?: number, textLength?: number }} limits
    */
   start(limits) {
-    this.#joinView.setMaxLength(limits.nameLength);
-    this.#composer.setMaxLength(limits.textLength);
-    this.#joinView.onJoin((name) => this.#join(name));
-    this.#composer.onSend((text) => this.#socket?.emit(CHAT_EVENTS.message, text));
-    this.#userListView.onCall((user) => this.#callCoordinator?.call(user));
+    this.#views.join.setMaxLength(limits.nameLength);
+    this.#views.composer.setMaxLength(limits.textLength);
+    this.#views.join.onJoin((name) => this.#join(name));
+    this.#views.composer.onSend((text) => this.#messageSender?.send(text));
+    this.#views.users.onCall((user) => this.#callCoordinator?.call(user));
   }
 
   #join(name) {
     if (this.#socket !== null) {
       return;
     }
-    this.#joinView.hide();
-    this.#chatView.show();
+    this.#views.join.hide();
+    this.#views.chat.show();
     this.#socket = this.#connect();
+    this.#messageSender = this.#createMessageSender(this.#socket, (reason) => this.#showProblem(reason));
     this.#callCoordinator = this.#createCallCoordinator(this.#socket, {
-      notify: (text) => this.#chatView.renderNotice(text),
-      onBusyChange: (busy) => this.#userListView.setCallingEnabled(!busy),
+      notify: (text) => this.#views.chat.renderNotice(text),
+      onBusyChange: (busy) => this.#views.users.setCallingEnabled(!busy),
     });
     this.#callCoordinator.start();
     this.#bindConnectionEvents(this.#socket, name);
     this.#bindChatEvents(this.#socket);
-    this.#composer.focus();
+    this.#views.composer.focus();
   }
 
   #bindConnectionEvents(socket, name) {
     socket.on('connect', () => {
-      this.#chatView.setStatus('En línea');
-      this.#chatView.clear();
-      socket.emit(CHAT_EVENTS.join, name);
+      this.#views.chat.setStatus(this.#texts.online());
+      this.#views.chat.clear();
+      socket.emit(CHAT_EVENTS.join, name, (response) => this.#handleJoinResponse(response));
     });
-    socket.on('disconnect', () => this.#chatView.setStatus('Desconectado'));
-    socket.on(CHAT_EVENTS.welcome, ({ id }) => {
-      this.#selfId = id;
-    });
+    socket.on('disconnect', () => this.#views.chat.setStatus(this.#texts.offline()));
   }
 
   #bindChatEvents(socket) {
-    socket.on(CHAT_EVENTS.history, (messages) => {
-      for (const message of messages) {
-        this.#renderMessage(message);
-      }
-    });
     socket.on(CHAT_EVENTS.message, (message) => this.#renderMessage(message));
-    socket.on(CHAT_EVENTS.notice, (text) => this.#chatView.renderNotice(text));
-    socket.on(CHAT_EVENTS.rateLimited, () => this.#chatView.renderNotice(RATE_LIMIT_NOTICE));
+    socket.on(CHAT_EVENTS.notice, (text) => this.#views.chat.renderNotice(text));
+    socket.on(CHAT_EVENTS.rateLimited, () => this.#showProblem(REJECTION_REASONS.rateLimited));
+    socket.on(CHAT_EVENTS.serverError, () => this.#showProblem(REJECTION_REASONS.serverError));
     socket.on(CHAT_EVENTS.users, (users) => {
-      this.#userListView.render(users, this.#selfId);
+      this.#views.users.render(users, this.#selfId);
       this.#callCoordinator.handleUsersChanged(users);
     });
   }
 
+  #handleJoinResponse(response) {
+    if (response?.status !== ACK_STATUS.joined) {
+      this.#showProblem(response?.reason);
+      return;
+    }
+    this.#selfId = response.id;
+    for (const message of response.history) {
+      this.#renderMessage(message);
+    }
+  }
+
   #renderMessage(message) {
-    this.#chatView.renderMessage(message, message.authorId === this.#selfId);
+    this.#views.chat.renderMessage(message, message.authorId === this.#selfId);
+  }
+
+  #showProblem(reason) {
+    this.#views.chat.renderNotice(this.#texts.problem(reason));
   }
 }

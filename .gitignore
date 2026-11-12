@@ -4,3 +4,6 @@ coverage/
 .env
 .scannerwork/
 .claude/
+data/
+reports/
+.stryker-tmp/

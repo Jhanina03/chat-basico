@@ -1,40 +1,32 @@
 /**
- * Pantalla de entrada donde el usuario escribe su nombre.
+ * Pantalla de entrada donde se escribe el nombre.
  */
 export class JoinView {
+  #dom;
   #screen;
-  #form;
   #nameInput;
+  #joinButton;
 
   /**
    * @param {import('./dom-factory.js').DomFactory} dom
    */
   constructor(dom) {
+    this.#dom = dom;
     this.#screen = dom.byId('join-screen');
-    this.#form = dom.byId('join-form');
     this.#nameInput = dom.byId('name-input');
+    this.#joinButton = dom.byId('join-button');
   }
 
   /**
-   * @param {(name: string) => void} handler se llama con el nombre ya recortado
+   * @param {(name: string) => void} handler recibe el nombre ya recortado
    */
   onJoin(handler) {
-    this.#form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const name = this.#nameInput.value.trim();
-      if (name !== '') {
-        handler(name);
-      }
-    });
+    this.#dom.bindSubmit({ input: this.#nameInput, button: this.#joinButton, onSubmit: handler });
   }
 
-  /**
-   * @param {number | undefined} maxLength
-   */
+  /** @param {number | undefined} maxLength */
   setMaxLength(maxLength) {
-    if (Number.isInteger(maxLength)) {
-      this.#nameInput.maxLength = maxLength;
-    }
+    this.#dom.setMaxLength(this.#nameInput, maxLength);
   }
 
   hide() {

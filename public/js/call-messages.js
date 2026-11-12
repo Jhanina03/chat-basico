@@ -1,9 +1,9 @@
-import { REJECT_REASONS } from '../../shared/protocol.js';
+import { CALL_REJECT_REASONS } from '../../shared/protocol.js';
 
 const REJECT_TEXTS = Object.freeze({
-  [REJECT_REASONS.busy]: (name) => `${name} está en otra llamada.`,
-  [REJECT_REASONS.unavailable]: (name) => `${name} no pudo contestar.`,
-  [REJECT_REASONS.rejected]: (name) => `${name} rechazó la llamada.`,
+  [CALL_REJECT_REASONS.busy]: (name) => `${name} está en otra llamada.`,
+  [CALL_REJECT_REASONS.unavailable]: (name) => `${name} no pudo contestar.`,
+  [CALL_REJECT_REASONS.rejected]: (name) => `${name} rechazó la llamada.`,
 });
 
 /**
@@ -24,7 +24,7 @@ export class CallMessages {
   }
 
   rejected(reason, name) {
-    const buildText = REJECT_TEXTS[reason] ?? REJECT_TEXTS[REJECT_REASONS.rejected];
+    const buildText = REJECT_TEXTS[reason] ?? REJECT_TEXTS[CALL_REJECT_REASONS.rejected];
     return buildText(name);
   }
 

@@ -1,5 +1,5 @@
 /**
- * Busca y crea elementos de la página. Todo el texto se inserta con textContent,
+ * Busca y crea elementos de la página. El texto siempre se inserta con textContent,
  * nunca como HTML, para evitar inyección de código (XSS).
  */
 export class DomFactory {
@@ -35,6 +35,38 @@ export class DomFactory {
     element.className = className;
     element.textContent = text;
     return element;
+  }
+
+  /**
+   * Aplica el límite de caracteres a una caja de texto, solo si es un entero.
+   * @param {HTMLInputElement} input
+   * @param {unknown} maxLength
+   */
+  setMaxLength(input, maxLength) {
+    if (Number.isInteger(maxLength)) {
+      input.maxLength = maxLength;
+    }
+  }
+
+  /**
+   * Ejecuta la acción al pulsar el botón o al presionar Enter en la caja de texto.
+   * Entrega el texto ya recortado y no hace nada si está vacío.
+   * @param {{ input: HTMLInputElement, button: HTMLButtonElement, onSubmit: (text: string) => void }} controls
+   */
+  bindSubmit({ input, button, onSubmit }) {
+    const submit = () => {
+      const text = input.value.trim();
+      if (text !== '') {
+        onSubmit(text);
+      }
+    };
+    button.addEventListener('click', submit);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submit();
+      }
+    });
   }
 
   /**

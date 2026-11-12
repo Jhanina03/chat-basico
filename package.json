@@ -6,24 +6,29 @@
   "main": "server.js",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0 <25"
   },
   "overrides": {
-    "minimatch": "^11.0.1"
+    "minimatch": "^11.0.1",
+    "qs": "^6.17.1"
   },
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test --test-timeout=20000",
-    "coverage": "node --test --test-timeout=20000 --experimental-test-coverage",
-    "lint": "eslint ."
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test --test-timeout=20000",
+    "coverage": "node --disable-warning=ExperimentalWarning --test --test-timeout=20000 --experimental-test-coverage",
+    "lint": "eslint .",
+    "mutation": "stryker run",
+    "audit:prod": "npm audit --omit=dev --audit-level=low"
   },
   "dependencies": {
     "express": "^4.21.2",
+    "express-rate-limit": "^7.5.1",
     "helmet": "^8.1.0",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@stryker-mutator/core": "^10.1.1",
     "eslint": "^9.39.5",
     "eslint-plugin-sonarjs": "^4.2.2",
     "globals": "^16.5.0",

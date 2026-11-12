@@ -1,4 +1,4 @@
-import { REJECT_REASONS } from '../../shared/protocol.js';
+import { CALL_REJECT_REASONS } from '../../shared/protocol.js';
 import { MediaAccessError } from './local-media-provider.js';
 
 export const CALL_STATES = Object.freeze({
@@ -71,21 +71,21 @@ export class CallCoordinator {
   }
 
   /**
-   * @param {{ id: string, name: string }} user persona a quien se llama
+   * @param {{ id: string, name: string }} contact persona a quien se llama
    */
-  async call(user) {
+  async call(contact) {
     if (this.#state !== CALL_STATES.idle) {
       return;
     }
-    const callNumber = this.#begin(CALL_STATES.calling, user);
-    this.#view.showCall(this.#messages.calling(user.name));
+    const callNumber = this.#begin(CALL_STATES.calling, contact);
+    this.#view.showCall(this.#messages.calling(contact.name));
     try {
       if (!(await this.#prepareConnection(callNumber))) {
         return;
       }
       const offer = await this.#session.createOffer();
       if (this.#isCurrent(callNumber)) {
-        this.#signaling.sendOffer(user.id, offer);
+        this.#signaling.sendOffer(contact.id, offer);
       }
     } catch (error) {
       this.#fail(callNumber, error);
@@ -111,7 +111,7 @@ export class CallCoordinator {
       }
     } catch (error) {
       if (this.#isCurrent(callNumber)) {
-        this.#signaling.sendReject(peer.id, REJECT_REASONS.unavailable);
+        this.#signaling.sendReject(peer.id, CALL_REJECT_REASONS.unavailable);
       }
       this.#fail(callNumber, error);
     }
@@ -121,7 +121,7 @@ export class CallCoordinator {
     if (this.#state !== CALL_STATES.ringing) {
       return;
     }
-    this.#signaling.sendReject(this.#peer.id, REJECT_REASONS.rejected);
+    this.#signaling.sendReject(this.#peer.id, CALL_REJECT_REASONS.rejected);
     this.#finish(null);
   }
 
@@ -145,7 +145,7 @@ export class CallCoordinator {
 
   #handleOffer({ from, fromName, description }) {
     if (this.#state !== CALL_STATES.idle) {
-      this.#signaling.sendReject(from, REJECT_REASONS.busy);
+      this.#signaling.sendReject(from, CALL_REJECT_REASONS.busy);
       return;
     }
     this.#begin(CALL_STATES.ringing, { id: from, name: fromName });

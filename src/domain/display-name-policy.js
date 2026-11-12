@@ -1,5 +1,6 @@
 /**
  * Decide qué nombre se muestra para un usuario.
+ * Regla de negocio: no puede haber dos usuarios conectados con el mismo nombre.
  */
 export class DisplayNamePolicy {
   #sanitizer;
@@ -21,5 +22,28 @@ export class DisplayNamePolicy {
    */
   normalize(rawName) {
     return this.#sanitizer.clean(rawName, this.#maxLength) || this.#fallbackName;
+  }
+
+  /**
+   * Devuelve un nombre libre: si "Ana" ya existe, prueba "Ana (2)", "Ana (3)"...
+   * Termina siempre porque la cantidad de usuarios conectados es limitada.
+   * @param {unknown} rawName
+   * @param {(name: string) => boolean} isTaken
+   * @returns {string}
+   */
+  normalizeUnique(rawName, isTaken) {
+    const baseName = this.normalize(rawName);
+    let candidate = baseName;
+    let suffix = 1;
+    while (isTaken(candidate)) {
+      suffix += 1;
+      candidate = this.#withSuffix(baseName, suffix);
+    }
+    return candidate;
+  }
+
+  #withSuffix(baseName, suffix) {
+    const label = ` (${suffix})`;
+    return this.#sanitizer.clean(baseName, this.#maxLength - label.length) + label;
   }
 }

@@ -3,7 +3,7 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 
 export default [
-  { ignores: ['node_modules/', 'coverage/'] },
+  { ignores: ['node_modules/', 'coverage/', 'reports/', '.stryker-tmp/'] },
   js.configs.recommended,
   sonarjs.configs.recommended,
   {
@@ -19,7 +19,7 @@ export default [
     },
   },
   {
-    files: ['server.js', 'src/**/*.js', 'test/**/*.js', 'eslint.config.js'],
+    files: ['server.js', 'src/**/*.js', 'test/**/*.js', 'eslint.config.js', 'stryker.config.mjs'],
     languageOptions: { globals: globals.node },
   },
   {

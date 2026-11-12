@@ -7,6 +7,7 @@ export class FakeSocket {
   constructor(id = 'self') {
     this.id = id;
     this.sent = [];
+    this.timeouts = [];
   }
 
   on(event, handler) {
@@ -15,19 +16,35 @@ export class FakeSocket {
     this.#handlers.set(event, handlers);
   }
 
-  emit(event, payload) {
-    this.sent.push({ event, payload });
+  emit(event, payload, acknowledge) {
+    const entry = { event, payload };
+    if (acknowledge !== undefined) {
+      entry.acknowledge = acknowledge;
+    }
+    this.sent.push(entry);
+  }
+
+  /** Imita socket.timeout(ms).emit(...) de Socket.IO. */
+  timeout(milliseconds) {
+    this.timeouts.push(milliseconds);
+    return { emit: (event, payload, acknowledge) => this.emit(event, payload, acknowledge) };
   }
 
   /**
    * Simula un evento recibido y espera a que terminen sus manejadores.
    */
-  async receive(event, payload) {
+  async receive(event, ...args) {
     const handlers = this.#handlers.get(event) ?? [];
-    await Promise.all(handlers.map((handler) => handler(payload)));
+    await Promise.all(handlers.map((handler) => handler(...args)));
   }
 
   sentPayloads(event) {
     return this.sent.filter((entry) => entry.event === event).map((entry) => entry.payload);
+  }
+
+  /** Responde la confirmación (ack) del último envío de ese evento. */
+  acknowledgeLast(event, ...response) {
+    const entry = this.sent.findLast((candidate) => candidate.event === event);
+    entry.acknowledge(...response);
   }
 }

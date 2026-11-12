@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { CALL_EVENTS, REJECT_REASONS } from '../../shared/protocol.js';
+import { CALL_EVENTS, CALL_REJECT_REASONS } from '../../shared/protocol.js';
 import { CallSignalValidator } from '../../src/domain/call-signal-validator.js';
 
 const validator = new CallSignalValidator({ sdpLength: 100, iceCandidateLength: 50 });
@@ -58,7 +58,7 @@ describe('CallSignalValidator', () => {
   });
 
   it('solo reenvía motivos de rechazo conocidos', () => {
-    assert.deepEqual(validator.parse(CALL_EVENTS.reject, { reason: REJECT_REASONS.busy }), { reason: 'busy' });
+    assert.deepEqual(validator.parse(CALL_EVENTS.reject, { reason: CALL_REJECT_REASONS.busy }), { reason: 'busy' });
     assert.deepEqual(validator.parse(CALL_EVENTS.reject, { reason: '<script>' }), { reason: 'rejected' });
   });
 

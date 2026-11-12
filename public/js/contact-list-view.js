@@ -1,7 +1,7 @@
 /**
  * Lista de usuarios conectados con el botón para iniciar una videollamada.
  */
-export class UserListView {
+export class ContactListView {
   #dom;
   #list;
   #users = [];
@@ -18,7 +18,7 @@ export class UserListView {
   }
 
   /**
-   * @param {(user: { id: string, name: string }) => void} handler
+   * @param {(contact: { id: string, name: string }) => void} handler
    */
   onCall(handler) {
     this.#onCall = handler;

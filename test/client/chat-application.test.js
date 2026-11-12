@@ -1,13 +1,16 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { CHAT_EVENTS } from '../../shared/protocol.js';
-import { ChatApplication, RATE_LIMIT_NOTICE } from '../../public/js/chat-application.js';
+import { ACK_STATUS, CHAT_EVENTS, REJECTION_REASONS } from '../../shared/protocol.js';
+import { ChatApplication } from '../../public/js/chat-application.js';
+import { ChatTexts } from '../../public/js/chat-texts.js';
 import { ChatView } from '../../public/js/chat-view.js';
 import { JoinView } from '../../public/js/join-view.js';
 import { MessageComposer } from '../../public/js/message-composer.js';
-import { UserListView } from '../../public/js/user-list-view.js';
+import { ContactListView } from '../../public/js/contact-list-view.js';
 import { FakeSocket } from '../support/fake-socket.js';
 import { createTestPage } from '../support/test-page.js';
+
+const texts = new ChatTexts();
 
 class RecordingCallCoordinator {
   constructor(callbacks) {
@@ -30,48 +33,72 @@ class RecordingCallCoordinator {
   }
 }
 
+class RecordingMessageSender {
+  constructor(onProblem) {
+    this.onProblem = onProblem;
+    this.sent = [];
+  }
+
+  send(text) {
+    this.sent.push(text);
+  }
+}
+
 describe('ChatApplication', () => {
   let page;
   let socket;
   let connections;
   let coordinator;
+  let sender;
 
   beforeEach(() => {
     page = createTestPage();
     socket = new FakeSocket('yo');
     connections = 0;
     coordinator = null;
+    sender = null;
     const application = new ChatApplication({
       connect: () => {
         connections += 1;
         return socket;
       },
-      joinView: new JoinView(page.dom),
-      composer: new MessageComposer(page.dom),
-      chatView: new ChatView(page.dom),
-      userListView: new UserListView(page.dom),
+      views: {
+        join: new JoinView(page.dom),
+        composer: new MessageComposer(page.dom),
+        chat: new ChatView(page.dom),
+        users: new ContactListView(page.dom),
+      },
+      texts,
       createCallCoordinator: (_socket, callbacks) => {
         coordinator = new RecordingCallCoordinator(callbacks);
         return coordinator;
+      },
+      createMessageSender: (_socket, onProblem) => {
+        sender = new RecordingMessageSender(onProblem);
+        return sender;
       },
     });
     application.start({ nameLength: 30, textLength: 500 });
   });
 
-  async function join(name = 'Jhanina') {
+  async function join(name = 'Jhanina', history = []) {
     page.document.getElementById('name-input').value = name;
-    page.submit('join-form');
+    page.submit('join-box');
     await socket.receive('connect');
-    await socket.receive(CHAT_EVENTS.welcome, { id: 'yo', name });
+    socket.acknowledgeLast(CHAT_EVENTS.join, { status: ACK_STATUS.joined, id: 'yo', name, history });
   }
 
   function sendText(text) {
     page.document.getElementById('message-input').value = text;
-    page.submit('message-form');
+    page.submit('composer');
   }
 
-  function messageTexts() {
+  function itemTexts() {
     return [...page.document.querySelectorAll('#messages li')].map((item) => item.textContent);
+  }
+
+  function itemClasses() {
+    return [...page.document.querySelectorAll('#messages li')].map((item) => item.className);
   }
 
   it('aplica los límites del servidor a las cajas de texto', () => {
@@ -82,11 +109,12 @@ describe('ChatApplication', () => {
   it('no envía mensajes antes de entrar', () => {
     sendText('hola');
     assert.equal(connections, 0);
+    assert.equal(sender, null);
   });
 
-  it('entra al chat, se conecta una sola vez y envía el nombre', async () => {
+  it('entra al chat una sola vez y envía el nombre', async () => {
     await join('Jhanina');
-    page.submit('join-form');
+    page.submit('join-box');
     assert.equal(connections, 1);
     assert.equal(coordinator.started, true);
     assert.equal(page.document.getElementById('join-screen').hidden, true);
@@ -95,30 +123,48 @@ describe('ChatApplication', () => {
     assert.deepEqual(socket.sentPayloads(CHAT_EVENTS.join), ['Jhanina']);
   });
 
-  it('envía mensajes y marca los propios', async () => {
-    await join();
-    sendText('Hola a todos');
-    assert.deepEqual(socket.sentPayloads(CHAT_EVENTS.message), ['Hola a todos']);
-
-    await socket.receive(CHAT_EVENTS.history, [
+  it('muestra el historial recibido y marca los mensajes propios', async () => {
+    await join('Jhanina', [
       { author: 'Luis', authorId: 'luis', text: 'Antes', sentAt: '2026-01-01T10:00:00.000Z' },
+      { author: 'Jhanina', authorId: 'yo', text: 'Mío', sentAt: '2026-01-01T10:01:00.000Z' },
     ]);
     await socket.receive(CHAT_EVENTS.message, {
-      author: 'Jhanina',
-      authorId: 'yo',
-      text: 'Mío',
-      sentAt: '2026-01-01T10:01:00.000Z',
+      author: 'Luis',
+      authorId: 'luis',
+      text: 'Nuevo',
+      sentAt: '2026-01-01T10:02:00.000Z',
     });
-    const classes = [...page.document.querySelectorAll('#messages li')].map((item) => item.className);
-    assert.deepEqual(classes, ['message', 'message mine']);
+    assert.deepEqual(itemClasses(), ['message', 'message mine', 'message']);
   });
 
-  it('muestra avisos del servidor, del anti-spam y de las llamadas', async () => {
+  it('avisa si el servidor no deja entrar', async () => {
+    page.document.getElementById('name-input').value = 'Jhanina';
+    page.submit('join-box');
+    await socket.receive('connect');
+    socket.acknowledgeLast(CHAT_EVENTS.join, { status: ACK_STATUS.rejected, reason: REJECTION_REASONS.chatFull });
+    assert.deepEqual(itemTexts(), ['El chat está lleno. Intenta más tarde.']);
+  });
+
+  it('entrega los mensajes escritos al enviador', async () => {
+    await join();
+    sendText('Hola a todos');
+    assert.deepEqual(sender.sent, ['Hola a todos']);
+  });
+
+  it('muestra avisos del servidor, de problemas de envío y de las llamadas', async () => {
     await join();
     await socket.receive(CHAT_EVENTS.notice, 'Luis entró al chat');
+    sender.onProblem(REJECTION_REASONS.rateLimited);
     await socket.receive(CHAT_EVENTS.rateLimited);
+    await socket.receive(CHAT_EVENTS.serverError);
     coordinator.callbacks.notify('Llamada finalizada.');
-    assert.deepEqual(messageTexts(), ['Luis entró al chat', RATE_LIMIT_NOTICE, 'Llamada finalizada.']);
+    assert.deepEqual(itemTexts(), [
+      'Luis entró al chat',
+      texts.problem(REJECTION_REASONS.rateLimited),
+      texts.problem(REJECTION_REASONS.rateLimited),
+      texts.problem(REJECTION_REASONS.serverError),
+      'Llamada finalizada.',
+    ]);
   });
 
   it('actualiza la lista de usuarios y permite llamarlos', async () => {
@@ -130,8 +176,7 @@ describe('ChatApplication', () => {
     await socket.receive(CHAT_EVENTS.users, users);
     assert.deepEqual(coordinator.userUpdates, [users]);
 
-    const callButton = page.document.querySelector('#user-list .call-button');
-    callButton.click();
+    page.document.querySelector('#user-list .call-button').click();
     assert.deepEqual(coordinator.calls, ['luis']);
 
     coordinator.callbacks.onBusyChange(true);

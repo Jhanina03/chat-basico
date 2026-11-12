@@ -6,51 +6,62 @@ import { SocketController } from './socket-controller.js';
  * El video no pasa por el servidor: solo se intercambian los datos para conectarse.
  */
 export class CallSignalingController extends SocketController {
-  #io;
-  #directory;
+  #room;
   #validator;
   #createRateLimiter;
+  #eventGuard;
+  #metrics;
 
   /**
    * @param {{
-   *   io: import('socket.io').Server,
-   *   directory: import('../domain/user-directory.js').UserDirectory,
+   *   room: import('./chat-room.js').ChatRoom,
    *   validator: import('../domain/call-signal-validator.js').CallSignalValidator,
    *   createRateLimiter: () => import('../security/rate-limiter.js').RateLimiter,
+   *   eventGuard: import('./socket-event-guard.js').SocketEventGuard,
+   *   metrics: import('../observability/chat-metrics.js').ChatMetrics,
    * }} dependencies
    */
-  constructor({ io, directory, validator, createRateLimiter }) {
+  constructor({ room, validator, createRateLimiter, eventGuard, metrics }) {
     super();
-    this.#io = io;
-    this.#directory = directory;
+    this.#room = room;
     this.#validator = validator;
     this.#createRateLimiter = createRateLimiter;
+    this.#eventGuard = eventGuard;
+    this.#metrics = metrics;
   }
 
   register(socket, session) {
     const rateLimiter = this.#createRateLimiter();
     for (const event of this.#validator.events) {
-      socket.on(event, (signal) => this.#forward({ socket, session, rateLimiter, event, signal }));
+      this.#eventGuard.on(socket, event, (signal) => this.#forward({ socket, session, rateLimiter, event, signal }));
     }
   }
 
   #forward({ socket, session, rateLimiter, event, signal }) {
     const targetId = signal?.to;
     if (!session.hasJoined || !this.#canReach(session, targetId)) {
+      this.#rejectSignal(event, 'unreachable');
       return;
     }
     if (!rateLimiter.tryConsume()) {
+      this.#rejectSignal(event, 'rate-limited');
       socket.emit(CHAT_EVENTS.rateLimited);
       return;
     }
     const payload = this.#validator.parse(event, signal);
     if (payload === null) {
+      this.#rejectSignal(event, 'invalid');
       return;
     }
-    this.#io.to(targetId).emit(event, { ...payload, from: session.id, fromName: session.name });
+    this.#metrics.increment('signals_forwarded_total', { event });
+    this.#room.sendTo(targetId, event, { ...payload, from: session.id, fromName: session.name });
   }
 
   #canReach(session, targetId) {
-    return typeof targetId === 'string' && targetId !== session.id && this.#directory.has(targetId);
+    return typeof targetId === 'string' && targetId !== session.id && this.#room.hasMember(targetId);
+  }
+
+  #rejectSignal(event, reason) {
+    this.#metrics.increment('signals_rejected_total', { event, reason });
   }
 }

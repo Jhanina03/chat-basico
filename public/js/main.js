@@ -3,16 +3,20 @@ import { CallMessages } from './call-messages.js';
 import { CallSignaling } from './call-signaling.js';
 import { CallView } from './call-view.js';
 import { ChatApplication } from './chat-application.js';
+import { ChatTexts } from './chat-texts.js';
 import { ChatView } from './chat-view.js';
 import { DomFactory } from './dom-factory.js';
 import { JoinView } from './join-view.js';
 import { LocalMediaProvider } from './local-media-provider.js';
 import { MessageComposer } from './message-composer.js';
+import { MessageSender } from './message-sender.js';
 import { PeerSession } from './peer-session.js';
-import { UserListView } from './user-list-view.js';
+import { ContactListView } from './contact-list-view.js';
 
 /** Sin configuración del servidor: el servidor valida igual los límites. */
 const FALLBACK_CONFIG = Object.freeze({ limits: {}, iceServers: [] });
+const SEND_TIMEOUT_MS = 5_000;
+const SEND_ATTEMPTS = 2;
 
 async function loadClientConfig() {
   try {
@@ -34,10 +38,21 @@ const media = new LocalMediaProvider(navigator.mediaDevices);
 
 const application = new ChatApplication({
   connect: () => globalThis.io(),
-  joinView: new JoinView(dom),
-  composer: new MessageComposer(dom),
-  chatView: new ChatView(dom),
-  userListView: new UserListView(dom),
+  views: {
+    join: new JoinView(dom),
+    composer: new MessageComposer(dom),
+    chat: new ChatView(dom),
+    users: new ContactListView(dom),
+  },
+  texts: new ChatTexts(),
+  createMessageSender: (socket, onProblem) =>
+    new MessageSender({
+      socket,
+      createId: () => crypto.randomUUID(),
+      timeoutMs: SEND_TIMEOUT_MS,
+      maxAttempts: SEND_ATTEMPTS,
+      onProblem,
+    }),
   createCallCoordinator: (socket, { notify, onBusyChange }) =>
     new CallCoordinator({
       signaling: new CallSignaling(socket),

@@ -1,10 +1,7 @@
-import { CALL_EVENTS, REJECT_REASONS } from '../../shared/protocol.js';
+import { CALL_EVENTS, CALL_REJECT_REASONS } from '../../shared/protocol.js';
+import { isPlainObject } from './guards.js';
 
-const ALLOWED_REJECT_REASONS = new Set(Object.values(REJECT_REASONS));
-
-function isPlainObject(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+const ALLOWED_REJECT_REASONS = new Set(Object.values(CALL_REJECT_REASONS));
 
 function isOptionalString(value) {
   return value === null || value === undefined || typeof value === 'string';
@@ -15,7 +12,8 @@ function isOptionalIndex(value) {
 }
 
 /**
- * Valida las señales de videollamada y devuelve solo los campos permitidos.
+ * Valida las señales de videollamada y devuelve solo los campos permitidos
+ * (evita reenviar datos inesperados: asignación masiva).
  */
 export class CallSignalValidator {
   #sdpLength;
@@ -87,6 +85,8 @@ export class CallSignalValidator {
   }
 
   #parseRejectSignal(signal) {
-    return { reason: ALLOWED_REJECT_REASONS.has(signal.reason) ? signal.reason : REJECT_REASONS.rejected };
+    return {
+      reason: ALLOWED_REJECT_REASONS.has(signal.reason) ? signal.reason : CALL_REJECT_REASONS.rejected,
+    };
   }
 }

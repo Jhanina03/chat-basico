@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Chat en tiempo real con videollamada">
   <title>Chat Básico</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -11,11 +12,14 @@
     <section id="join-screen" class="join">
       <h1>Chat Básico</h1>
       <p>Escribe tu nombre para entrar al chat.</p>
-      <form id="join-form" class="join-form">
-        <label for="name-input">Tu nombre</label>
-        <input id="name-input" type="text" autocomplete="off" required>
-        <button type="submit">Entrar</button>
-      </form>
+      <div id="join-box" class="join-form" role="group" aria-labelledby="name-label">
+        <label id="name-label" for="name-input">Tu nombre</label>
+        <input id="name-input" type="text" autocomplete="off" enterkeyhint="go">
+        <button id="join-button" type="button">Entrar</button>
+      </div>
+      <p class="source">
+        <a href="https://github.com/Jhanina03/chat-basico" target="_blank" rel="noopener noreferrer">Código fuente</a>
+      </p>
     </section>
 
     <section id="chat-screen" class="chat" hidden>
@@ -33,11 +37,11 @@
         <ul id="messages" class="messages" aria-live="polite"></ul>
       </div>
 
-      <form id="message-form" class="message-form">
+      <div id="composer" class="message-form" role="group" aria-label="Escribir mensaje">
         <label for="message-input" class="visually-hidden">Mensaje</label>
-        <input id="message-input" type="text" placeholder="Escribe un mensaje" autocomplete="off">
-        <button type="submit">Enviar</button>
-      </form>
+        <input id="message-input" type="text" placeholder="Escribe un mensaje" autocomplete="off" enterkeyhint="send">
+        <button id="send-button" type="button">Enviar</button>
+      </div>
     </section>
   </main>
 
@@ -58,7 +62,7 @@
     </div>
   </section>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="/vendor/socket.io.min.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

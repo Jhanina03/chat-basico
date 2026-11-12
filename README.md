@@ -2,7 +2,9 @@
 
 Chat en tiempo real con **videollamada**, sin login: escribes tu nombre, mandas mensajes y llamas
 por video a cualquier persona conectada.
-Hecho con Node.js, Express, Socket.IO y WebRTC.
+
+- **Demo:** https://chat-basico.onrender.com
+- **Tecnologías:** Node.js 22, Express, Socket.IO, WebRTC y SQLite (incluido en Node).
 
 ## Ejecutar en tu PC
 
@@ -13,95 +15,72 @@ npm start
 
 Abre http://localhost:3000 en dos pestañas o en otro dispositivo de la misma red.
 
-## Pruebas y calidad
+## Calidad
 
 ```bash
-npm test           # 114 pruebas automáticas
+npm test           # pruebas automáticas (unitarias, integración, concurrencia, interfaz)
 npm run coverage   # pruebas con reporte de cobertura
 npm run lint       # ESLint con las reglas de SonarJS
+npm run mutation   # pruebas de mutación con Stryker (reporte en reports/mutation)
+npm run audit:prod # vulnerabilidades en dependencias de producción
 ```
+
+Cada subida a GitHub ejecuta todo lo anterior en GitHub Actions (`.github/workflows/ci.yml`)
+y SonarQube Cloud analiza el código.
+
+## Reglas de negocio
+
+| Regla | Dónde se aplica | Prueba |
+|---|---|---|
+| Hay que entrar con un nombre antes de enviar mensajes o llamar | `MessagingController`, `CallSignalingController` | `chat-server.test.js` |
+| Solo se entra una vez por conexión (no se cambia el nombre después) | `UserSession.join`, `PresenceController` | `security-and-config.test.js`, `chat-server.test.js` |
+| No hay dos usuarios conectados con el mismo nombre | `DisplayNamePolicy.normalizeUnique`, `UserDirectory` | `domain.test.js`, `chat-server.test.js` |
+| Máximo 100 usuarios en el chat y 300 conexiones | `ChatRoom.isFull`, `ConnectionAdmission` | `chat-server.test.js` |
+| Mensajes de 1 a 500 caracteres visibles; nombres hasta 30 | `TextSanitizer`, `MessageFactory` | `domain.test.js` |
+| Un mensaje se guarda **antes** de repartirse; si falla el guardado no se reparte | `MessagingController` | `chat-server.test.js` (fallo de base de datos) |
+| Un reintento del mismo mensaje no se duplica | `SqliteMessageRepository.save` (`clientMessageId` único) | `persistence.test.js`, `chat-server.test.js` |
+| Se conservan los últimos 50 mensajes | `SqliteMessageRepository` | `persistence.test.js` |
+| Solo una videollamada a la vez; si estás ocupado se responde "ocupado" | `CallCoordinator` | `call-coordinator.test.js` |
+
+## Configuración (variables de entorno)
+
+| Variable | Por defecto | Para qué sirve |
+|---|---|---|
+| `PORT` | `3000` | Puerto HTTP |
+| `DATABASE_PATH` | `data/chat.sqlite` | Archivo de la base de datos |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warn` o `error` |
+| `METRICS_TOKEN` | (vacío: `/metrics` desactivado) | Token de 32+ caracteres para leer las métricas |
+| `TRUST_PROXY_HOPS` | `1` en Render, `0` en otro lugar | Saltos de proxy confiables para leer la IP real |
+| `TURN_URL`, `TURN_USERNAME`, `TURN_CREDENTIAL` | (vacío) | Servidor TURN para redes muy cerradas |
+
+Si alguna variable tiene un valor inválido, el servidor no arranca y lo registra en el log.
+
+## Observabilidad
+
+- **Logs estructurados:** una línea JSON por evento (`server_started`, `socket_connected`, `socket_rejected`,
+  `socket_handler_failed`, `http_request_failed`…), con `connectionId` o `requestId` para seguir cada caso.
+  Los textos de los mensajes y los secretos nunca se escriben.
+- **Correlación:** cada respuesta HTTP lleva `X-Request-Id`; los errores muestran ese id al usuario.
+- **Métricas Prometheus:** `GET /metrics` con `Authorization: Bearer <METRICS_TOKEN>`.
+- **Salud:** `GET /health` (lo usa Render para saber si el servicio está vivo).
 
 ## Cómo funciona la videollamada
 
 1. El video viaja **directo entre los dos navegadores** (WebRTC). No pasa por el servidor.
-2. El servidor solo reenvía los datos para conectarse (oferta, respuesta y candidatos ICE).
-   Esto se llama *señalización*. Valida cada señal y la reenvía solo a la persona indicada.
-3. Los servidores STUN públicos ayudan a encontrar la ruta entre redes distintas.
-   En algunas redes móviles muy cerradas hace falta un servidor TURN, que se configura así:
+2. El servidor solo reenvía los datos para conectarse (oferta, respuesta y candidatos ICE),
+   después de validarlos, y solo a la persona indicada.
+3. Los servidores STUN públicos ayudan a encontrar la ruta entre redes. En algunas redes móviles
+   hace falta un servidor TURN (variables `TURN_*`).
 
-| Variable | Ejemplo |
-|---|---|
-| `TURN_URL` | `turn:turn.ejemplo.com:3478` (varias separadas por coma) |
-| `TURN_USERNAME` | usuario del servidor TURN |
-| `TURN_CREDENTIAL` | clave del servidor TURN |
+## Documentos
 
-## Diseño (SOLID)
+- [SECURITY.md](SECURITY.md): modelo de amenazas, controles y riesgos aceptados.
+- `docs/EVIDENCIAS.md`: evidencias de calidad por cada criterio de evaluación.
 
-### Servidor (`src/`)
+## Despliegue en Render
 
-| Clase | Responsabilidad |
-|---|---|
-| `EnvironmentConfig` | Lee el puerto y los servidores ICE desde las variables de entorno. |
-| `TextSanitizer` | Quita caracteres peligrosos y recorta textos sin partir emojis. |
-| `DisplayNamePolicy` | Decide el nombre que se muestra (limpio o "Anónimo"). |
-| `MessageFactory` | Crea mensajes inmutables con id, autor, texto y fecha. |
-| `MessageHistory` | Guarda los últimos 50 mensajes. |
-| `UserDirectory` | Lista de usuarios conectados. |
-| `CallSignalValidator` | Valida las señales de videollamada y quita campos no permitidos. |
-| `RateLimiter` | Anti-spam: máximo de acciones por intervalo. |
-| `OriginPolicy` | Rechaza conexiones que vienen de otros sitios web. |
-| `UserSession` | Estado de cada conexión (nombre, si ya entró). |
-| `SocketController` | Contrato común de los controladores (clase abstracta). |
-| `ChatController` | Eventos del chat: entrar, enviar mensaje, salir. |
-| `CallSignalingController` | Reenvía señales de videollamada entre dos usuarios. |
-| `SocketGateway` | Crea una sesión por conexión y la entrega a los controladores. |
-| `ChatServer` | Arranca y detiene el servidor de forma ordenada. |
-| `SystemClock`, `UuidGenerator` | Reloj e identificadores (se reemplazan en las pruebas). |
+1. **New → Web Service** y elige el repositorio (o usa `render.yaml`).
+2. Build Command: `npm ci`. Start Command: `npm start`. Instance Type: `Free`.
+3. Opcional: `METRICS_TOKEN`, `TURN_*` y un disco persistente con `DATABASE_PATH`.
 
-### Navegador (`public/js/`)
-
-| Clase | Responsabilidad |
-|---|---|
-| `DomFactory` | Crea elementos con `textContent` (protección XSS). |
-| `JoinView` | Pantalla para escribir el nombre. |
-| `MessageComposer` | Caja para escribir y enviar mensajes. |
-| `ChatView` | Muestra mensajes, avisos y estado. |
-| `UserListView` | Lista de conectados con botón de videollamada. |
-| `CallView` | Pantalla de videollamada y aviso de llamada entrante. |
-| `CallMessages` | Textos de la videollamada. |
-| `CallSignaling` | Envía y recibe señales por Socket.IO. |
-| `LocalMediaProvider` | Abre y apaga cámara y micrófono, con errores claros. |
-| `PeerSession` | Conexión WebRTC con la otra persona. |
-| `CallCoordinator` | Ciclo de la llamada: llamar, contestar, rechazar, colgar. |
-| `ChatApplication` | Conecta las vistas con el servidor. |
-
-### Cómo se aplica SOLID
-
-- **S (responsabilidad única):** cada clase hace una sola cosa (ver tablas).
-- **O (abierto/cerrado):** para agregar una función se crea otro `SocketController`, sin modificar los existentes.
-  `CallSignalValidator` registra un validador por evento.
-- **L (sustitución de Liskov):** `ChatController` y `CallSignalingController` se usan igual a través de `SocketController`.
-- **I (segregación de interfaces):** las dependencias son pequeñas: reloj (`now()`), generador de id (`next()`), registrador (`info`, `warn`).
-- **D (inversión de dependencias):** las clases reciben sus dependencias por el constructor.
-  Solo `src/composition-root.js` y `public/js/main.js` crean las clases concretas.
-
-`shared/protocol.js` tiene los nombres de los eventos y lo usan el servidor y el navegador.
-
-## Seguridad
-
-- Mensajes mostrados con `textContent`, nunca como HTML: protección contra XSS.
-- Validación en el servidor de tipo, longitud, caracteres de control y de dirección del texto.
-- Señales de videollamada validadas y reenviadas solo a usuarios conectados (nunca a uno mismo).
-- Anti-spam: 5 mensajes cada 5 segundos y 100 señales cada 10 segundos por usuario.
-- Solo se aceptan conexiones desde la misma página (cabecera `Origin`).
-- Quien no dio su nombre no recibe mensajes ni puede enviarlos.
-- Cabeceras de seguridad con `helmet`, `Permissions-Policy` (cámara solo para esta página) y sin `x-powered-by`.
-- Paquetes de máximo 64 KB.
-
-## Publicar en Render
-
-1. **New → Web Service** y elige el repositorio.
-2. Build Command: `npm install`. Start Command: `npm start`. Instance Type: `Free`.
-3. (Opcional) Agrega las variables `TURN_URL`, `TURN_USERNAME` y `TURN_CREDENTIAL`.
-
-> El plan gratis se duerme tras 15 minutos sin uso y los mensajes se guardan solo en memoria.
+> En el plan gratis el servicio se duerme tras 15 minutos sin uso y el disco se borra al redesplegar.

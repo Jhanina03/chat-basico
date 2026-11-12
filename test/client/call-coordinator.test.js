@@ -1,6 +1,6 @@
 import { beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { CALL_EVENTS, REJECT_REASONS } from '../../shared/protocol.js';
+import { CALL_EVENTS, CALL_REJECT_REASONS } from '../../shared/protocol.js';
 import { CALL_STATES, CallCoordinator } from '../../public/js/call-coordinator.js';
 import { CallMessages } from '../../public/js/call-messages.js';
 import { CallSignaling } from '../../public/js/call-signaling.js';
@@ -277,14 +277,14 @@ describe('CallCoordinator', () => {
     it('responde ocupado si ya hay una llamada', async () => {
       await coordinator.call(LUIS);
       await receiveOffer({ id: 'ana', name: 'Ana' });
-      assert.deepEqual(socket.sentPayloads(CALL_EVENTS.reject), [{ to: 'ana', reason: REJECT_REASONS.busy }]);
+      assert.deepEqual(socket.sentPayloads(CALL_EVENTS.reject), [{ to: 'ana', reason: CALL_REJECT_REASONS.busy }]);
     });
 
     it('rechaza sin mostrar avisos', async () => {
       await receiveOffer();
       view.handlers.reject();
       assert.equal(coordinator.state, CALL_STATES.idle);
-      assert.deepEqual(socket.sentPayloads(CALL_EVENTS.reject), [{ to: 'luis', reason: REJECT_REASONS.rejected }]);
+      assert.deepEqual(socket.sentPayloads(CALL_EVENTS.reject), [{ to: 'luis', reason: CALL_REJECT_REASONS.rejected }]);
       assert.deepEqual(notices, []);
     });
 
@@ -292,7 +292,7 @@ describe('CallCoordinator', () => {
       await receiveOffer();
       media.error = new MediaAccessError('No se encontró cámara o micrófono.');
       await coordinator.acceptIncoming();
-      assert.deepEqual(socket.sentPayloads(CALL_EVENTS.reject), [{ to: 'luis', reason: REJECT_REASONS.unavailable }]);
+      assert.deepEqual(socket.sentPayloads(CALL_EVENTS.reject), [{ to: 'luis', reason: CALL_REJECT_REASONS.unavailable }]);
       assert.deepEqual(notices, ['No se encontró cámara o micrófono.']);
     });
 
@@ -345,9 +345,9 @@ describe('CallCoordinator', () => {
 
     it('explica cada motivo de rechazo', async () => {
       const cases = [
-        [REJECT_REASONS.busy, 'Luis está en otra llamada.'],
-        [REJECT_REASONS.unavailable, 'Luis no pudo contestar.'],
-        [REJECT_REASONS.rejected, 'Luis rechazó la llamada.'],
+        [CALL_REJECT_REASONS.busy, 'Luis está en otra llamada.'],
+        [CALL_REJECT_REASONS.unavailable, 'Luis no pudo contestar.'],
+        [CALL_REJECT_REASONS.rejected, 'Luis rechazó la llamada.'],
         ['desconocido', 'Luis rechazó la llamada.'],
       ];
       for (const [reason, message] of cases) {

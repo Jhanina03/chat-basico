@@ -2,40 +2,37 @@
  * Caja de texto y botón para escribir mensajes.
  */
 export class MessageComposer {
-  #form;
+  #dom;
   #input;
+  #sendButton;
 
   /**
    * @param {import('./dom-factory.js').DomFactory} dom
    */
   constructor(dom) {
-    this.#form = dom.byId('message-form');
+    this.#dom = dom;
     this.#input = dom.byId('message-input');
+    this.#sendButton = dom.byId('send-button');
   }
 
   /**
-   * @param {(text: string) => void} handler se llama con el texto ya recortado
+   * @param {(text: string) => void} handler recibe el texto ya recortado
    */
   onSend(handler) {
-    this.#form.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const text = this.#input.value.trim();
-      if (text === '') {
-        return;
-      }
-      handler(text);
-      this.#input.value = '';
-      this.focus();
+    this.#dom.bindSubmit({
+      input: this.#input,
+      button: this.#sendButton,
+      onSubmit: (text) => {
+        handler(text);
+        this.#input.value = '';
+        this.focus();
+      },
     });
   }
 
-  /**
-   * @param {number | undefined} maxLength
-   */
+  /** @param {number | undefined} maxLength */
   setMaxLength(maxLength) {
-    if (Number.isInteger(maxLength)) {
-      this.#input.maxLength = maxLength;
-    }
+    this.#dom.setMaxLength(this.#input, maxLength);
   }
 
   focus() {
