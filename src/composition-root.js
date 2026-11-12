@@ -17,7 +17,7 @@ import { DisplayNamePolicy } from './domain/display-name-policy.js';
 import { MessageFactory } from './domain/message-factory.js';
 import { TextSanitizer } from './domain/text-sanitizer.js';
 import { UserDirectory } from './domain/user-directory.js';
-import { createSecurityHeaders } from './http/security-headers.js';
+import { applyNoCacheToEngine, createSecurityHeaders } from './http/security-headers.js';
 import { createWebApplication } from './http/web-application.js';
 import { SystemClock } from './infrastructure/system-clock.js';
 import { UuidGenerator } from './infrastructure/uuid-generator.js';
@@ -121,6 +121,7 @@ export function createChatServer({ environment = {}, logger, clock = new SystemC
     },
   });
   io.engine.use(securityHeaders);
+  applyNoCacheToEngine(io.engine);
 
   const directory = new UserDirectory();
   const room = new ChatRoom({ io, directory, roomName: CHAT_ROOM, capacity: limits.maxOnlineUsers });

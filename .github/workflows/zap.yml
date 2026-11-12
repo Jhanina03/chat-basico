@@ -7,13 +7,21 @@ on:
         description: URL del sitio a escanear
         required: true
         default: https://chat-basico.onrender.com
+      scan_type:
+        description: "baseline = araña + análisis pasivo; full = además ataque activo"
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - baseline
 
 permissions:
   contents: read
 
 jobs:
-  zap-full-scan:
-    name: OWASP ZAP (araña + ataque activo)
+  zap-scan:
+    name: OWASP ZAP (${{ inputs.scan_type }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -22,7 +30,17 @@ jobs:
           TARGET: ${{ inputs.target }}
         run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors --output /dev/null "$TARGET/health"
 
+      - name: Escaneo pasivo con ZAP
+        if: inputs.scan_type == 'baseline'
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: ${{ inputs.target }}
+          allow_issue_writing: false
+          fail_action: false
+          artifact_name: reporte-zap
+
       - name: Escaneo completo con ZAP
+        if: inputs.scan_type == 'full'
         uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
         with:
           target: ${{ inputs.target }}

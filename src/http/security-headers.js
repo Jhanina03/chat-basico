@@ -5,6 +5,8 @@ const PERMISSIONS_POLICY = 'camera=(self), microphone=(self), geolocation=(), pa
 const TWO_YEARS_IN_SECONDS = 63_072_000;
 const SELF = "'self'";
 const NONE = "'none'";
+/** El chat muestra datos en tiempo real: nada se guarda en caché (navegador ni proxies). */
+const NO_CACHE = 'no-store, no-cache, must-revalidate';
 
 /**
  * Política de seguridad de contenido estricta: solo recursos de este mismo sitio,
@@ -49,7 +51,20 @@ export function createSecurityHeaders() {
   });
   return (req, res, next) => {
     res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
-    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Cache-Control', NO_CACHE);
     helmetMiddleware(req, res, next);
   };
+}
+
+/**
+ * El motor de Socket.IO escribe su propia cabecera Cache-Control en sus respuestas;
+ * aquí se reemplaza por la misma política que usa el resto del sitio.
+ * @param {import('node:events').EventEmitter} engine io.engine
+ */
+export function applyNoCacheToEngine(engine) {
+  const setNoCache = (headers) => {
+    headers['Cache-Control'] = NO_CACHE;
+  };
+  engine.on('initial_headers', setNoCache);
+  engine.on('headers', setNoCache);
 }

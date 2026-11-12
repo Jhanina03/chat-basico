@@ -84,14 +84,14 @@ describe('ChatServer (integración)', () => {
       assert.equal(response.headers.get('cross-origin-resource-policy'), 'same-origin');
       assert.equal(response.headers.get('x-frame-options'), 'DENY');
       assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate');
     });
 
     it('sirve el cliente de Socket.IO desde Express con las mismas cabeceras', async () => {
       const client = await fetch(`${context.baseUrl}/vendor/socket.io.min.js`);
       assert.equal(client.status, 200);
       assert.match(client.headers.get('content-type'), /javascript/);
-      assert.equal(client.headers.get('cache-control'), 'no-store');
+      assert.equal(client.headers.get('cache-control'), 'no-store, no-cache, must-revalidate');
       assert.equal(client.headers.get('x-content-type-options'), 'nosniff');
       const legacy = await fetch(`${context.baseUrl}/socket.io/socket.io.js`);
       assert.notEqual(legacy.status, 200);
@@ -102,7 +102,7 @@ describe('ChatServer (integración)', () => {
       assert.equal(response.status, 200);
       assert.ok(response.headers.get('content-security-policy'));
       assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-      assert.equal(response.headers.get('cache-control'), 'no-store');
+      assert.equal(response.headers.get('cache-control'), 'no-store, no-cache, must-revalidate');
     });
 
     it('reutiliza un identificador de correlación válido', async () => {
